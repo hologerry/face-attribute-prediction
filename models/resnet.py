@@ -208,7 +208,7 @@ def resnet18(pretrained=True, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
+    model = ResNet(Bottleneck, [2, 2, 2, 2], **kwargs)
     if pretrained:
         init_pretrained_weights(model, model_urls['resnet18'])
     return model
