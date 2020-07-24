@@ -33,7 +33,7 @@ model_names = sorted(name for name in models.__dict__
 # Parse arguments
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('-d', '--data', default='path to dataset', type=str)
-parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
+parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet50',
                     choices=model_names,
                     help='model architecture: ' +
                     ' | '.join(model_names) +
@@ -180,7 +180,7 @@ def main():
 
     train_dataset = CelebA(
         args.data,
-        'train_40_att_list.txt',
+        'train_40_attr_list.txt',
         transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
@@ -197,7 +197,7 @@ def main():
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
     val_loader = torch.utils.data.DataLoader(
-        CelebA(args.data, 'val_40_att_list.txt', transforms.Compose([
+        CelebA(args.data, 'val_40_attr_list.txt', transforms.Compose([
             transforms.ToTensor(),
             normalize,
         ])),
@@ -205,7 +205,7 @@ def main():
         num_workers=args.workers, pin_memory=True)
 
     test_loader = torch.utils.data.DataLoader(
-        CelebA(args.data, 'test_40_att_list.txt', transforms.Compose([
+        CelebA(args.data, 'test_40_attr_list.txt', transforms.Compose([
             transforms.ToTensor(),
             normalize,
         ])),
