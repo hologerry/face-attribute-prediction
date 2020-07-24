@@ -33,7 +33,7 @@ model_names = sorted(name for name in models.__dict__
 # Parse arguments
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('-d', '--data', default='path to dataset', type=str)
-parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet50',
+parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
                     choices=model_names,
                     help='model architecture: ' +
                     ' | '.join(model_names) +
@@ -87,7 +87,7 @@ parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
 parser.add_argument('--dist-backend', default='gloo', type=str,
                     help='distributed backend')
 # Device options
-parser.add_argument('--gpu-id', default='0', type=str,
+parser.add_argument('--gpu-id', default='0,1', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
 
 

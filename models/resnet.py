@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 
 
-__all__ = ['ResNet', 'resnet50']
+__all__ = ['ResNet', 'resnet18', 'resnet50']
 
 
 model_urls = {
@@ -202,6 +202,18 @@ def resnet50(pretrained=True, **kwargs):
     return model
 
 
+def resnet18(pretrained=True, **kwargs):
+    """Constructs a ResNet-18 model.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
+    if pretrained:
+        init_pretrained_weights(model, model_urls['resnet18'])
+    return model
+
+
 def init_pretrained_weights(model, model_url):
     """
     Initialize model with pretrained weights.
@@ -213,4 +225,3 @@ def init_pretrained_weights(model, model_url):
     model_dict.update(pretrain_dict)
     model.load_state_dict(model_dict)
     print("Initialized model with pretrained weights from {}".format(model_url))
-
