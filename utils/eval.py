@@ -1,7 +1,9 @@
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import, print_function
+
 import torch
 
 __all__ = ['accuracy']
+
 
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""

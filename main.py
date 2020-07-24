@@ -2,34 +2,32 @@
 Training script for ImageNet
 Copyright (c) Wei YANG, 2017
 '''
-from __future__ import print_function
-
 import argparse
 import os
+import random
 import shutil
 import time
-import random
+from math import cos, pi
 
 import torch
-import torch.nn as nn
-import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
+import torch.nn as nn
+import torch.nn.parallel
 import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
+# import torchvision.datasets as datasets
 import torchvision.transforms as transforms
-import torchvision.datasets as datasets
-import models
-from math import cos, pi
-
-from celeba import CelebA
-from utils import Bar, Logger, AverageMeter, accuracy, mkdir_p, savefig
 from tensorboardX import SummaryWriter
 
+import models
+from celeba import CelebA
+from utils import AverageMeter, Bar, Logger, accuracy, mkdir_p, savefig
+
 model_names = sorted(name for name in models.__dict__
-    if name.islower() and not name.startswith("__")
-    and callable(models.__dict__[name]))
+                     if name.islower() and not name.startswith("__")
+                     and callable(models.__dict__[name]))
 
 
 # Parse arguments
@@ -38,8 +36,8 @@ parser.add_argument('-d', '--data', default='path to dataset', type=str)
 parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
                     choices=model_names,
                     help='model architecture: ' +
-                        ' | '.join(model_names) +
-                        ' (default: resnet18)')
+                    ' | '.join(model_names) +
+                    ' (default: resnet18)')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 # Optimization options
@@ -123,13 +121,13 @@ def main():
         model = models.__dict__[args.arch](pretrained=True)
     elif args.arch.startswith('resnext'):
         model = models.__dict__[args.arch](
-                    baseWidth=args.base_width,
-                    cardinality=args.cardinality,
-                )
+            baseWidth=args.base_width,
+            cardinality=args.cardinality,
+        )
     elif args.arch.startswith('shufflenet'):
         model = models.__dict__[args.arch](
-                    groups=args.groups
-                )
+            groups=args.groups
+        )
     else:
         print("=> creating model '{}'".format(args.arch))
         model = models.__dict__[args.arch]()
@@ -173,7 +171,6 @@ def main():
     else:
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
         logger.set_names(['Learning Rate', 'Train Loss', 'Valid Loss', 'Train Acc.', 'Valid Acc.'])
-
 
     cudnn.benchmark = True
 
@@ -242,9 +239,8 @@ def main():
         writer.add_scalar('learning rate', lr, epoch + 1)
         writer.add_scalars('loss', {'train loss': train_loss, 'validation loss': val_loss}, epoch + 1)
         writer.add_scalars('accuracy', {'train accuracy': train_acc, 'validation accuracy': prec1}, epoch + 1)
-        #for name, param in model.named_parameters():
+        # for name, param in model.named_parameters():
         #    writer.add_histogram(name, param.clone().cpu().data.numpy(), epoch + 1)
-
 
         is_best = prec1 > best_prec1
         best_prec1 = max(prec1, best_prec1)
@@ -253,7 +249,7 @@ def main():
             'arch': args.arch,
             'state_dict': model.state_dict(),
             'best_prec1': best_prec1,
-            'optimizer' : optimizer.state_dict(),
+            'optimizer': optimizer.state_dict(),
         }, is_best, checkpoint=args.checkpoint)
 
     logger.close()
@@ -310,16 +306,16 @@ def train(train_loader, model, criterion, optimizer, epoch):
         end = time.time()
 
         # plot progress
-        bar.suffix  = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f}'.format(
-                    batch=i + 1,
-                    size=len(train_loader),
-                    data=data_time.avg,
-                    bt=batch_time.avg,
-                    total=bar.elapsed_td,
-                    eta=bar.eta_td,
-                    loss=loss_avg,
-                    top1=prec1_avg,
-                    )
+        bar.suffix = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f}'.format(
+            batch=i + 1,
+            size=len(train_loader),
+            data=data_time.avg,
+            bt=batch_time.avg,
+            total=bar.elapsed_td,
+            eta=bar.eta_td,
+            loss=loss_avg,
+            top1=prec1_avg,
+        )
         bar.next()
     bar.finish()
     return (loss_avg, prec1_avg)
@@ -365,16 +361,16 @@ def validate(val_loader, model, criterion):
             end = time.time()
 
         # plot progress
-        bar.suffix  = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f}'.format(
-                    batch=i + 1,
-                    size=len(val_loader),
-                    data=data_time.avg,
-                    bt=batch_time.avg,
-                    total=bar.elapsed_td,
-                    eta=bar.eta_td,
-                    loss=loss_avg,
-                    top1=prec1_avg,
-                    )
+        bar.suffix = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f}'.format(
+            batch=i + 1,
+            size=len(val_loader),
+            data=data_time.avg,
+            bt=batch_time.avg,
+            total=bar.elapsed_td,
+            eta=bar.eta_td,
+            loss=loss_avg,
+            top1=prec1_avg,
+        )
         bar.next()
     bar.finish()
     return (loss_avg, prec1_avg)

@@ -34,7 +34,7 @@ class CelebA(data.Dataset):
     def __init__(self, root, ann_file, transform=None, target_transform=None, loader=default_loader):
         images = []
         targets = []
-        
+
         for line in open(os.path.join(root, ann_file), 'r'):
             sample = line.split()
             if len(sample) != 41:
@@ -46,7 +46,7 @@ class CelebA(data.Dataset):
         self.transform = transform
         self.target_transform = target_transform
         self.loader = loader
-		
+
     def __getitem__(self, index):
         path = self.images[index]
         sample = self.loader(path)
@@ -61,4 +61,3 @@ class CelebA(data.Dataset):
 
     def __len__(self):
         return len(self.images)
-
