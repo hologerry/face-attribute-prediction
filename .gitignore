@@ -106,3 +106,4 @@ venv.bak/
 # checkpoints
 checkpoints/
 Anno/
+data

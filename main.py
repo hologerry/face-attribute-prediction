@@ -331,6 +331,8 @@ def validate(val_loader, model, criterion):
 
     # switch to evaluate mode
     model.eval()
+    loss_avg = 0
+    prec1_avg = 0
 
     with torch.no_grad():
         end = time.time()
@@ -360,19 +362,19 @@ def validate(val_loader, model, criterion):
             batch_time.update(time.time() - end)
             end = time.time()
 
-        # plot progress
-        bar.suffix = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f}'.format(
-            batch=i + 1,
-            size=len(val_loader),
-            data=data_time.avg,
-            bt=batch_time.avg,
-            total=bar.elapsed_td,
-            eta=bar.eta_td,
-            loss=loss_avg,
-            top1=prec1_avg,
-        )
-        bar.next()
-    bar.finish()
+            # plot progress
+            bar.suffix = '({batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Total: {total:} | ETA: {eta:} | Loss: {loss:.4f} | top1: {top1: .4f}'.format(
+                batch=i+1,
+                size=len(val_loader),
+                data=data_time.avg,
+                bt=batch_time.avg,
+                total=bar.elapsed_td,
+                eta=bar.eta_td,
+                loss=loss_avg,
+                top1=prec1_avg,
+            )
+            bar.next()
+        bar.finish()
     return (loss_avg, prec1_avg)
 
 

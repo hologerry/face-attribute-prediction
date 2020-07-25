@@ -61,3 +61,34 @@ class CelebA(data.Dataset):
 
     def __len__(self):
         return len(self.images)
+
+
+class CelebAEval(data.Dataset):
+    def __init__(self, root, experiment_name, num_selected=13, transform=None, target_transform=None, loader=default_loader) -> None:
+        # cureently we use 17 attributes, only the first 13 in the original 40
+        # the last 4 is the skin color
+        img_path = os.path.join(root, experiment_name, 'evaluate')
+        label_path = os.path.join(root, experiment_name, 'evaluate_label')
+        images = sorted(os.listdir(img_path))
+        targets = sorted(os.listdir(label_path))
+        assert len(images) == len(targets)
+        self.images = [os.path.join(root, experiment_name, 'evaluate', img) for img in images]
+        self.targets = [open(os.path.join(root, experiment_name, 'evaluate_label', label)).readlines()[:num_selected] for label in targets]
+        self.transform = transform
+        self.target_transform = target_transform
+        self.loader = loader
+
+    def __getitem__(self, index):
+        path = self.images[index]
+        sample = self.loader(path)
+        target = self.targets[index]
+        target = torch.LongTensor(target)
+        if self.transform is not None:
+            sample = self.transform(sample)
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return sample, target
+
+    def __len__(self):
+        return len(self.images)
