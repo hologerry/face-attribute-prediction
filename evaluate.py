@@ -4,6 +4,7 @@ Copyright (c) Wei YANG, 2017
 '''
 import argparse
 import os
+from os.path import join as ospj
 import time
 
 import torch
@@ -32,7 +33,9 @@ parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
                     help='model architecture: ' +
                     ' | '.join(model_names) +
                     ' (default: resnet18)')
-parser.add_argument('-r', '--root', type=str, default='/D_Data/Face_Editing/face_editing/experiments')
+parser.add_argument('--pretrained', dest='pretrained', action='store_true',
+                    help='use pre-trained model')
+parser.add_argument('-r', '--root', type=str, default='/D_data/Face_Editing/face_editing/experiments')
 parser.add_argument('--exp', type=str, default='face_editing_spectral_attr_n_atten_seg_cyc_g_spade_d_ddp')
 
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
@@ -60,6 +63,10 @@ parser.add_argument('--all_attrs', type=list,
                              'Rosy_Cheeks', 'Sideburns', 'Smiling', 'Straight_Hair', 'Wavy_Hair',
                              'Wearing_Earrings', 'Wearing_Hat', 'Wearing_Lipstick', 'Wearing_Necklace',
                              'Wearing_Necktie', 'Young'])
+
+# Device options
+parser.add_argument('--gpu-id', default='0,1', type=str,
+                    help='id(s) for CUDA_VISIBLE_DEVICES')
 
 best_prec1 = 0
 
@@ -123,7 +130,7 @@ def main():
                                      std=[0.229, 0.224, 0.225])
 
     eval_loader = torch.utils.data.DataLoader(
-        CelebAEval(args.root, args.exp, transforms.Compose([
+        CelebAEval(args.root, args.exp, transform=transforms.Compose([
             transforms.ToTensor(),
             normalize,
         ])),
@@ -131,9 +138,9 @@ def main():
         num_workers=args.workers, pin_memory=True)
 
     _, pred_avg, attrs_top_avg = validate(eval_loader, model, criterion)
-    with open(args.root, args.exp, 'attribute_prediction.txt', 'w') as f:
+    with open(ospj(args.root, args.exp, 'attribute_prediction.txt'), 'w') as f:
         f.write("All selected attrs average accuracy: " + str(pred_avg)+'\n')
-        for i, attr, avg in enumerate(zip(args.selected_attrs, attrs_top_avg)):
+        for i, (attr, avg) in enumerate(zip(args.selected_attrs, attrs_top_avg)):
             f.write(f"Attribute {attr} accuracy: {avg}\n")
     print(f"Experiment {args.exp} attribute classifier average accuracy:", pred_avg)
 
