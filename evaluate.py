@@ -131,6 +131,7 @@ def main():
 
     eval_loader = torch.utils.data.DataLoader(
         CelebAEval(args.root, args.exp, transform=transforms.Compose([
+            transforms.Resize((256, 256)),
             transforms.ToTensor(),
             normalize,
         ])),

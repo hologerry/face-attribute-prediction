@@ -31,7 +31,6 @@ class CelebAMaskHQ(data.Dataset):
 
     def preprocess(self):
         assert os.path.exists(self.image_dir), f'Image data directory does not exist: {self.image_dir}'
-        assert os.path.exists(self.segme_dir), f'Attribute file does not exist: {self.segme_dir}'
         assert os.path.exists(self.attr_file), f'Attribute file does not exist: {self.attr_file}'
         with open(self.attr_file, 'r') as f:
             img_name_attrs_lines = f.readlines()
@@ -63,11 +62,13 @@ class CelebAMaskHQ(data.Dataset):
         if self.mode == 'train':
             filename_a, label_a = self.train_dataset[index]
             image_a = Image.open(ospj(self.image_dir, filename_a))
+            return self.transform_img(image_a), torch.LongTensor(label_a)
 
         elif self.mode == 'val':
             filename_a, label_a = self.test_dataset[index]
             image_a = Image.open(ospj(self.image_dir, filename_a))
             return self.transform_img(image_a), torch.LongTensor(label_a)
+
         else:
             filename_a, label_a = self.test_dataset[index]
             image_a = Image.open(ospj(self.image_dir, filename_a))

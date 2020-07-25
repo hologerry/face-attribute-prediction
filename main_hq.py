@@ -182,6 +182,7 @@ def main():
         'celeba_mask_hq',
         'train',
         transforms.Compose([
+            transforms.Resize((256, 256)),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             normalize,
@@ -198,6 +199,7 @@ def main():
 
     val_loader = torch.utils.data.DataLoader(
         CelebAMaskHQ(args.data, 'celeba_mask_hq', 'val', transforms.Compose([
+            transforms.Resize((256, 256)),
             transforms.ToTensor(),
             normalize,
         ])),
@@ -206,6 +208,7 @@ def main():
 
     test_loader = torch.utils.data.DataLoader(
         CelebAMaskHQ(args.data, 'celeba_mask_hq', 'test', transforms.Compose([
+            transforms.Resize((256, 256)),
             transforms.ToTensor(),
             normalize,
         ])),
@@ -266,8 +269,8 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
     batch_time = AverageMeter()
     data_time = AverageMeter()
-    losses = [AverageMeter() for _ in range(40)]
-    top1 = [AverageMeter() for _ in range(40)]
+    losses = [AverageMeter() for _ in range(44)]
+    top1 = [AverageMeter() for _ in range(44)]
 
     # switch to train mode
     model.train()
@@ -328,8 +331,8 @@ def validate(val_loader, model, criterion):
 
     batch_time = AverageMeter()
     data_time = AverageMeter()
-    losses = [AverageMeter() for _ in range(40)]
-    top1 = [AverageMeter() for _ in range(40)]
+    losses = [AverageMeter() for _ in range(44)]
+    top1 = [AverageMeter() for _ in range(44)]
 
     # switch to evaluate mode
     model.eval()
