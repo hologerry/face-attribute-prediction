@@ -64,9 +64,7 @@ class CelebA(data.Dataset):
 
 
 class CelebAEval(data.Dataset):
-    def __init__(self, root, experiment_name, num_selected=13, transform=None, target_transform=None, loader=default_loader) -> None:
-        # cureently we use 17 attributes, only the first 13 in the original 40
-        # the last 4 is the skin color
+    def __init__(self, root, experiment_name, num_selected=17, transform=None, target_transform=None, loader=default_loader) -> None:
         self.num_selected = num_selected
         img_path = os.path.join(root, experiment_name, 'evaluate')
         label_path = os.path.join(root, experiment_name, 'evaluate_label')

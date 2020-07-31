@@ -52,7 +52,7 @@ parser.add_argument('--resume', default='checkpoints/model_best.pth.tar', type=s
 parser.add_argument('--selected_attrs', type=list,
                     default=['Arched_Eyebrows', 'Black_Hair', 'Blond_Hair', 'Brown_Hair', 'Eyeglasses',
                              'Gray_Hair', 'Heavy_Makeup', 'Male', 'Mouth_Slightly_Open', 'Mustache',
-                             'No_Beard', 'Smiling', 'Young'])
+                             'No_Beard', 'Smiling', 'Young', 'Skin_0', 'Skin_1', 'Skin_2', 'Skin_3'])
 parser.add_argument('--all_attrs', type=list,
                     default=['5_o_Clock_Shadow', 'Arched_Eyebrows', 'Attractive', 'Bags_Under_Eyes',
                              'Bald', 'Bangs', 'Big_Lips', 'Big_Nose', 'Black_Hair', 'Blond_Hair',
@@ -62,7 +62,7 @@ parser.add_argument('--all_attrs', type=list,
                              'Oval_Face', 'Pale_Skin', 'Pointy_Nose', 'Receding_Hairline',
                              'Rosy_Cheeks', 'Sideburns', 'Smiling', 'Straight_Hair', 'Wavy_Hair',
                              'Wearing_Earrings', 'Wearing_Hat', 'Wearing_Lipstick', 'Wearing_Necklace',
-                             'Wearing_Necktie', 'Young'])
+                             'Wearing_Necktie', 'Young', 'Skin_0', 'Skin_1', 'Skin_2', 'Skin_3'])
 
 # Device options
 parser.add_argument('--gpu-id', default='0,1', type=str,
@@ -90,19 +90,18 @@ def main():
     # create model
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](pretrained=True)
+        model = models.__dict__[args.arch](pretrained=True, num_attributes=44)
     elif args.arch.startswith('resnext'):
         model = models.__dict__[args.arch](
             baseWidth=args.base_width,
             cardinality=args.cardinality,
+            num_attributes=44,
         )
     elif args.arch.startswith('shufflenet'):
-        model = models.__dict__[args.arch](
-            groups=args.groups
-        )
+        model = models.__dict__[args.arch](groups=args.groups, num_attributes=44)
     else:
         print("=> creating model '{}'".format(args.arch))
-        model = models.__dict__[args.arch]()
+        model = models.__dict__[args.arch](pretrained=True, num_attributes=44)
 
     if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
         model.features = torch.nn.DataParallel(model.features)
