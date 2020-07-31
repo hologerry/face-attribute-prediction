@@ -68,11 +68,14 @@ class CelebAEval(data.Dataset):
         self.num_selected = num_selected
         img_path = os.path.join(root, experiment_name, 'evaluate')
         label_path = os.path.join(root, experiment_name, 'evaluate_label')
+        target_path = os.path.join(root, experiment_name, 'evaluate_target')
         images = sorted(os.listdir(img_path))
         targets = sorted(os.listdir(label_path))
+        target_idxs = sorted(os.listdir(target_path))
         assert len(images) == len(targets)
-        self.images = [os.path.join(root, experiment_name, 'evaluate', img) for img in images]
-        self.targets = [os.path.join(root, experiment_name, 'evaluate_label', label) for label in targets]
+        self.images = [os.path.join(img_path, img) for img in images]
+        self.targets = [os.path.join(label_path, label) for label in targets]
+        self.target_idxs = [os.path.join(target_path, idx) for idx in target_idxs]
         self.transform = transform
         self.target_transform = target_transform
         self.loader = loader
@@ -81,15 +84,18 @@ class CelebAEval(data.Dataset):
         path = self.images[index]
         sample = self.loader(path)
         label_path = self.targets[index]
+        target_idx_path = self.target_idxs[index]
         target = open(label_path).readlines()
         target = [float(i.strip()) for i in target]
         target = torch.LongTensor(target)
+        target_idx = int(open(target_idx_path).readlines()[0].strip())
+        target_idx = torch.LongTensor([target_idx])
         if self.transform is not None:
             sample = self.transform(sample)
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return sample, target
+        return sample, target, target_idx
 
     def __len__(self):
         return len(self.images)
