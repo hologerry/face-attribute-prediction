@@ -166,7 +166,6 @@ def validate(val_loader, model, criterion):
             data_time.update(time.time() - end)
 
             target = target.cuda(non_blocking=True)
-            print(target_idx.size())
             # compute output
             output = model(input)
             # measure accuracy and record loss
