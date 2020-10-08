@@ -132,4 +132,4 @@ if __name__ == '__main__':
 
     monitor = LoggerMonitor(paths)
     monitor.plot(names=field)
-    savefig('test.eps')
+    savefig('test.pdf')

@@ -22,7 +22,7 @@ import torchvision.transforms as transforms
 from tensorboardX import SummaryWriter
 
 import models
-from celeba import CelebA
+from celeba_mask_hq import CelebAMaskHQSingle
 from utils import AverageMeter, Bar, Logger, accuracy, mkdir_p, savefig
 
 model_names = sorted(name for name in models.__dict__
@@ -32,7 +32,7 @@ model_names = sorted(name for name in models.__dict__
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('-d', '--data', default='path to dataset', type=str)
+parser.add_argument('-d', '--data', default='/D_data/Face_Editing/face_editing/data', type=str)
 parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
                     choices=model_names,
                     help='model architecture: ' +
@@ -45,9 +45,9 @@ parser.add_argument('--epochs', default=90, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('--train-batch', default=256, type=int, metavar='N',
+parser.add_argument('--train-batch', default=128, type=int, metavar='N',
                     help='train batchsize (default: 256)')
-parser.add_argument('--test-batch', default=200, type=int, metavar='N',
+parser.add_argument('--test-batch', default=100, type=int, metavar='N',
                     help='test batchsize (default: 200)')
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate')
@@ -66,7 +66,7 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
 # Checkpoints
-parser.add_argument('-c', '--checkpoint', default='checkpoints', type=str, metavar='PATH',
+parser.add_argument('-c', '--checkpoint', default='checkpoints_single', type=str, metavar='PATH',
                     help='path to save checkpoint (default: checkpoints)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -87,9 +87,10 @@ parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
 parser.add_argument('--dist-backend', default='gloo', type=str,
                     help='distributed backend')
 # Device options
-parser.add_argument('--gpu-id', default='0,1', type=str,
+parser.add_argument('--gpu-id', default='0', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
 
+parser.add_argument('--single_attr', default='', type=str, help="single attribute")
 
 best_prec1 = 0
 
@@ -98,6 +99,7 @@ def main():
     global args, best_prec1
     args = parser.parse_args()
 
+    args.checkpoint = f"checkpoints_single_{args.single_attr}"
     args.distributed = args.world_size > 1
 
     if args.distributed:
@@ -118,19 +120,18 @@ def main():
     # create model
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](pretrained=True)
+        model = models.__dict__[args.arch](pretrained=True, num_attributes=1)
     elif args.arch.startswith('resnext'):
         model = models.__dict__[args.arch](
             baseWidth=args.base_width,
             cardinality=args.cardinality,
+            num_attributes=1,
         )
     elif args.arch.startswith('shufflenet'):
-        model = models.__dict__[args.arch](
-            groups=args.groups
-        )
+        model = models.__dict__[args.arch](groups=args.groups, num_attributes=1)
     else:
         print("=> creating model '{}'".format(args.arch))
-        model = models.__dict__[args.arch]()
+        model = models.__dict__[args.arch](pretrained=True, num_attributes=1)
 
     if not args.distributed:
         if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
@@ -150,10 +151,10 @@ def main():
                                 weight_decay=args.weight_decay)
 
     # optionally resume from a checkpoint
-    title = 'CelebA-' + args.arch
+    title = 'CelebAHQ-' + args.arch
     if not os.path.isdir(args.checkpoint):
         mkdir_p(args.checkpoint)
-
+    logger = None
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
@@ -175,17 +176,19 @@ def main():
     cudnn.benchmark = True
 
     # Data loading code
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
 
-    train_dataset = CelebA(
+    train_dataset = CelebAMaskHQSingle(
         args.data,
-        'train_40_attr_list.txt',
+        'celeba_mask_hq',
+        'train',
         transforms.Compose([
+            transforms.Resize((256, 256)),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             normalize,
-        ]))
+        ]),
+        single_attr=args.single_attr)
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -197,18 +200,20 @@ def main():
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
     val_loader = torch.utils.data.DataLoader(
-        CelebA(args.data, 'val_40_attr_list.txt', transforms.Compose([
+        CelebAMaskHQSingle(args.data, 'celeba_mask_hq', 'val', transforms.Compose([
+            transforms.Resize((256, 256)),
             transforms.ToTensor(),
-            normalize,
-        ])),
+            normalize]),
+            single_attr=args.single_attr),
         batch_size=args.test_batch, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
     test_loader = torch.utils.data.DataLoader(
-        CelebA(args.data, 'test_40_attr_list.txt', transforms.Compose([
+        CelebAMaskHQSingle(args.data, 'celeba_mask_hq', 'test', transforms.Compose([
+            transforms.Resize((256, 256)),
             transforms.ToTensor(),
-            normalize,
-        ])),
+            normalize]),
+            single_attr=args.single_attr),
         batch_size=args.test_batch, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
@@ -266,11 +271,13 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
     batch_time = AverageMeter()
     data_time = AverageMeter()
-    losses = [AverageMeter() for _ in range(40)]
-    top1 = [AverageMeter() for _ in range(40)]
+    losses = [AverageMeter() for _ in range(1)]
+    top1 = [AverageMeter() for _ in range(1)]
 
     # switch to train mode
     model.train()
+    loss_avg = 0
+    prec1_avg = 0
 
     end = time.time()
     for i, (input, target) in enumerate(train_loader):
@@ -281,6 +288,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
         # compute output
         output = model(input)
+        assert len(output) == 1
         # measure accuracy and record loss
         loss = []
         prec1 = []
@@ -326,8 +334,8 @@ def validate(val_loader, model, criterion):
 
     batch_time = AverageMeter()
     data_time = AverageMeter()
-    losses = [AverageMeter() for _ in range(40)]
-    top1 = [AverageMeter() for _ in range(40)]
+    losses = [AverageMeter() for _ in range(1)]
+    top1 = [AverageMeter() for _ in range(1)]
 
     # switch to evaluate mode
     model.eval()

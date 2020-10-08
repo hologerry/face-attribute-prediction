@@ -104,6 +104,6 @@ venv.bak/
 .mypy_cache/
 
 # checkpoints
-checkpoints*
+checkpoint*
 Anno/
 data

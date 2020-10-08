@@ -256,7 +256,7 @@ def main():
 
     logger.close()
     logger.plot()
-    savefig(os.path.join(args.checkpoint, 'log.eps'))
+    savefig(os.path.join(args.checkpoint, 'log.pdf'))
     writer.close()
 
     print('Best accuracy:')
