@@ -24,6 +24,8 @@ from tensorboardX import SummaryWriter
 import models
 from celeba_mask_hq import CelebAMaskHQ
 from utils import AverageMeter, Bar, Logger, accuracy, mkdir_p, savefig
+from diff_augment import DiffAugment
+
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
@@ -89,6 +91,8 @@ parser.add_argument('--dist-backend', default='gloo', type=str,
 # Device options
 parser.add_argument('--gpu-id', default='0,1', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
+# Augmentation
+parser.add_argument('--policy', type=str, default='color,translation', help='differentiable agumentations')
 
 
 best_prec1 = 0
@@ -284,6 +288,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
         target = target.cuda(non_blocking=True)
 
+        input = DiffAugment(input, policy=args.policy)
         # compute output
         output = model(input)
         # measure accuracy and record loss
