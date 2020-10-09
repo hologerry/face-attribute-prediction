@@ -68,7 +68,7 @@ parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
 # Checkpoints
 parser.add_argument('-c', '--checkpoint', default='checkpoints_celebahq', type=str, metavar='PATH',
                     help='path to save checkpoint (default: checkpoints)')
-parser.add_argument('--resume', default='', type=str, metavar='PATH',
+parser.add_argument('--resume', default='checkpoints_celebahq/checkpoint.pth.tar', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 # Architecture
 parser.add_argument('--cardinality', type=int, default=32, help='ResNeXt model cardinality (group).')
