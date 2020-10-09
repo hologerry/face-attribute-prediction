@@ -68,9 +68,9 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
 # Checkpoints
-parser.add_argument('-c', '--checkpoint', default='checkpoints', type=str, metavar='PATH',
-                    help='path to save checkpoint (default: checkpoints)')
-parser.add_argument('--resume', default='checkpoints/checkpoint.pth.tar', type=str, metavar='PATH',
+parser.add_argument('-c', '--checkpoint', default='checkpoints_rand_diff_aug', type=str, metavar='PATH',
+                    help='path to save checkpoint (default: checkpoints_rand_diff_aug)')
+parser.add_argument('--resume', default='checkpoints_rand_diff_aug/checkpoint.pth.tar', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 # Architecture
 parser.add_argument('--cardinality', type=int, default=32, help='ResNeXt model cardinality (group).')
