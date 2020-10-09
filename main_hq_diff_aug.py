@@ -24,7 +24,7 @@ from tensorboardX import SummaryWriter
 import models
 from celeba_mask_hq import CelebAMaskHQ
 from utils import AverageMeter, Bar, Logger, accuracy, mkdir_p, savefig
-from diff_augment import DiffAugment
+from diff_augment import RandDiffAugment
 
 
 model_names = sorted(name for name in models.__dict__
@@ -43,7 +43,7 @@ parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 # Optimization options
-parser.add_argument('--epochs', default=90, type=int, metavar='N',
+parser.add_argument('--epochs', default=500, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -70,7 +70,7 @@ parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
 # Checkpoints
 parser.add_argument('-c', '--checkpoint', default='checkpoints', type=str, metavar='PATH',
                     help='path to save checkpoint (default: checkpoints)')
-parser.add_argument('--resume', default='', type=str, metavar='PATH',
+parser.add_argument('--resume', default='checkpoints/checkpoint.pth.tar', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 # Architecture
 parser.add_argument('--cardinality', type=int, default=32, help='ResNeXt model cardinality (group).')
@@ -288,7 +288,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
         target = target.cuda(non_blocking=True)
 
-        input = DiffAugment(input, policy=args.policy)
+        input = RandDiffAugment(input, policy=args.policy)
         # compute output
         output = model(input)
         # measure accuracy and record loss

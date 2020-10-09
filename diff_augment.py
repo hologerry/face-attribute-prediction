@@ -2,6 +2,8 @@
 # Shengyu Zhao, Zhijian Liu, Ji Lin, Jun-Yan Zhu, and Song Han
 # https://arxiv.org/pdf/2006.10738
 
+import random
+
 import torch
 import torch.nn.functional as F
 
@@ -13,6 +15,21 @@ def DiffAugment(x, policy='', channels_first=True):
         for p in policy.split(','):
             for f in AUGMENT_FNS[p]:
                 x = f(x)
+        if not channels_first:
+            x = x.permute(0, 2, 3, 1)
+        x = x.contiguous()
+    return x
+
+
+def RandDiffAugment(x, policy='', channels_first=True):
+    if policy:
+        if not channels_first:
+            x = x.permute(0, 3, 1, 2)
+        for p in policy.split(','):
+            for f in AUGMENT_FNS[p]:
+                r = random.random()
+                if r < 0.5:
+                    x = f(x)
         if not channels_first:
             x = x.permute(0, 2, 3, 1)
         x = x.contiguous()
