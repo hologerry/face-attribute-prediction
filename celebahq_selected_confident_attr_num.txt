@@ -1,0 +1,17 @@
+Arched_Eyebrows 21349
+Black_Hair 26388
+Blond_Hair 28099
+Brown_Hair 23156
+Eyeglasses 29932
+Gray_Hair 29217
+Heavy_Makeup 25914
+Male 29503
+Mouth_Slightly_Open 28194
+Mustache 28135
+No_Beard 28623
+Smiling 27462
+Young 24829
+Skin_0 29804
+Skin_1 28884
+Skin_2 28963
+Skin_3 29789

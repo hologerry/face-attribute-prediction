@@ -12,6 +12,7 @@ import torch.backends.cudnn as cudnn
 
 import torch.nn.parallel
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
@@ -35,8 +36,8 @@ parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
                     ' (default: resnet18)')
 parser.add_argument('--pretrained', dest='pretrained', action='store_true',
                     help='use pre-trained model')
-parser.add_argument('-r', '--root', type=str, default='/D_data/Face_Editing/')
-parser.add_argument('--exp', type=str, default='ffhq-dataset')
+parser.add_argument('-r', '--root', type=str, default='/D_data/Face_Editing/face_editing/data')
+parser.add_argument('--exp', type=str, default='ffhq')
 
 parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
@@ -44,9 +45,9 @@ parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
 parser.add_argument('--test-batch', default=1, type=int, metavar='N',
                     help='test batchsize (default: 200)')
 # Checkpoints
-parser.add_argument('-c', '--checkpoint', default='checkpoints', type=str, metavar='PATH',
+parser.add_argument('-c', '--checkpoint', default='checkpoints_celebahq', type=str, metavar='PATH',
                     help='path to save checkpoint (default: checkpoints)')
-parser.add_argument('--resume', default='checkpoints/model_best.pth.tar', type=str, metavar='PATH',
+parser.add_argument('--resume', default='checkpoints_celebahq/model_best.pth.tar', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 # Attributes
 parser.add_argument('--selected_attrs', type=list,
@@ -64,12 +65,15 @@ parser.add_argument('--all_attrs', type=list,
                              'Wearing_Earrings', 'Wearing_Hat', 'Wearing_Lipstick', 'Wearing_Necklace',
                              'Wearing_Necktie', 'Young', 'Skin_0', 'Skin_1', 'Skin_2', 'Skin_3'])
 parser.add_argument('--pred_attr_file', type=str, default='ffhq_attributes_list.txt')
+parser.add_argument('--pred_attr_dir', type=str, default='ffhq_attr_prob')
 
 # Device options
 parser.add_argument('--gpu-id', default='0,1', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
 
 best_prec1 = 0
+args = None
+org_idexs2selected_idxes = None
 
 
 def main():
@@ -139,8 +143,9 @@ def main():
 
     attr_f = open(args.pred_attr_file, 'w')
     attr_f.write(' '.join(args.all_attrs)+'\n')
+    attr_prob_dir = ospj(args.root, args.exp, args.pred_attr_dir)
 
-    _, pred_avg, attrs_top_avg = validate(eval_loader, model, criterion, attr_f)
+    _, pred_avg, attrs_top_avg = validate(eval_loader, model, criterion, attr_f, attr_prob_dir)
     with open(ospj(args.root, args.exp, 'attribute_prediction.txt'), 'w') as f:
         f.write("All selected attrs average accuracy: " + str(pred_avg)+'\n')
         for i, (attr, avg) in enumerate(zip(args.selected_attrs, attrs_top_avg)):
@@ -148,7 +153,7 @@ def main():
     print(f"Experiment {args.exp} attribute classifier average accuracy:", pred_avg)
 
 
-def validate(val_loader, model, criterion, attribute_f):
+def validate(val_loader, model, criterion, attribute_f, attribute_prob_dir):
     bar = Bar('Processing', max=len(val_loader))
 
     batch_time = AverageMeter()
@@ -175,12 +180,23 @@ def validate(val_loader, model, criterion, attribute_f):
             # measure accuracy and record loss
             # print(output[0])
             # print(output[0].size())
+            sub_dir = ospj(attribute_prob_dir, f'{(img_idx.item() // 1000):02d}000')
+            os.makedirs(sub_dir, exist_ok=True)
+            attr_prob_file_name = f'{img_idx.item():05d}.txt'
+            attr_path = ospj(sub_dir, attr_prob_file_name)
+            attr_f = open(attr_path, 'w')
             img_path = f'{img_idx.item():05d}.png '
             attribute_f.write(img_path)
             for j in range(len(output)):
                 _, pred = output[j].topk(1, 1, True, True)
                 attr = '1' if pred else '-1'
                 attribute_f.write(attr + ' ')
+                out = F.softmax(output[j], dim=1)
+                val0_prob = out[0, 0].item()
+                val1_prob = out[0, 1].item()
+                attr_f.write(args.all_attrs[j] + ' ')
+                attr_f.write(f'{val0_prob:.6f} ')
+                attr_f.write(f'{val1_prob:.6f}\n')
             attribute_f.write('\n')
             # measure elapsed time
             batch_time.update(time.time() - end)
