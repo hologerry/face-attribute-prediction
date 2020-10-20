@@ -195,8 +195,8 @@ def validate(val_loader, model, criterion, attribute_f, attribute_prob_dir):
                 val0_prob = out[0, 0].item()
                 val1_prob = out[0, 1].item()
                 attr_f.write(args.all_attrs[j] + ' ')
-                attr_f.write(f'{val0_prob:.6f} ')
-                attr_f.write(f'{val1_prob:.6f}\n')
+                attr_f.write(f'{val0_prob:.10f} ')
+                attr_f.write(f'{val1_prob:.10f}\n')
             attribute_f.write('\n')
             # measure elapsed time
             batch_time.update(time.time() - end)
