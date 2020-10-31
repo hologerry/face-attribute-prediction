@@ -13,7 +13,7 @@ class Wild(data.Dataset):
         self.dataset_name = dataset_name
         self.mode = mode
 
-        self.image_dir = ospj(self.data_root, dataset_name, 'testset')
+        self.image_dir = ospj(self.data_root, dataset_name, 'images')
         self.transform_img = transform_img
         self.test_images = []
 

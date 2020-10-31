@@ -44,9 +44,9 @@ for i in range(num_imgs):
             all_attr_probs_1[s[0]].append(v1)
 
 
-prob_ratio = 0.3
+prob_ratio = 0.5
 prob_ratio_s = str(prob_ratio).replace('.', '')
-all_attr_threshold_by_ratio = f'/D_data/Face_Editing/face_editing/data/{dataset_name}/all_attr_threshold_by_ratio_{prob_ratio_s}.txt'
+all_attr_threshold_by_ratio = f'/D_data/Face_Editing/face_editing/data/{dataset_name}/all_attr_threhold_by_ratio_{prob_ratio_s}.txt'
 
 with open(all_attr_threshold_by_ratio, 'w') as f:
     for attr in all_attrs:

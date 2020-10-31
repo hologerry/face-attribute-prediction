@@ -64,8 +64,8 @@ parser.add_argument('--all_attrs', type=list,
                              'Rosy_Cheeks', 'Sideburns', 'Smiling', 'Straight_Hair', 'Wavy_Hair',
                              'Wearing_Earrings', 'Wearing_Hat', 'Wearing_Lipstick', 'Wearing_Necklace',
                              'Wearing_Necktie', 'Young', 'Skin_0', 'Skin_1', 'Skin_2', 'Skin_3'])
-parser.add_argument('--pred_attr_file', type=str, default='celebahq_pred_attributes_list.txt')
-parser.add_argument('--pred_attr_dir', type=str, default='celebahq_attr_prob')
+parser.add_argument('--pred_attr_file', type=str, default='wild_pred_attributes_list.txt')
+parser.add_argument('--pred_attr_dir', type=str, default='wild_attr_prob')
 
 # Device options
 parser.add_argument('--gpu-id', default='0,1', type=str,

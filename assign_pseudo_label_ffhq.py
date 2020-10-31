@@ -3,7 +3,7 @@ from os.path import join as ospj
 
 dataset_name = 'ffhq'
 
-prob_ratio = 0.3
+prob_ratio = 0.5
 prob_ratio_s = str(prob_ratio).replace('.', '')
 data_path = f"/D_data/Face_Editing/face_editing/data/{dataset_name}"
 attr_prob_dir = f"{dataset_name}_attr_prob"

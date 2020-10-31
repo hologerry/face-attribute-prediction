@@ -66,9 +66,9 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
 # Checkpoints
-parser.add_argument('-c', '--checkpoint', default='checkpoints_celebahq_module_tmp', type=str, metavar='PATH',
+parser.add_argument('-c', '--checkpoint', default='checkpoints_celebahq_module', type=str, metavar='PATH',
                     help='path to save checkpoint (default: checkpoints)')
-parser.add_argument('--resume', default='', type=str, metavar='PATH',
+parser.add_argument('--resume', default='checkpoints_celebahq_module/', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 # Architecture
 parser.add_argument('--cardinality', type=int, default=32, help='ResNeXt model cardinality (group).')

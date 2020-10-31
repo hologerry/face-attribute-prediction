@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 
@@ -167,7 +168,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x, get_feat=False):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -182,12 +183,23 @@ class ResNet(nn.Module):
         x = x.view(x.size(0), -1)
         x = self.stem(x)
 
-        y = []
+        outputs = []
+        features = []
         for i in range(self.num_attributes):
             classifier = getattr(self, 'classifier' + str(i).zfill(2))
-            y.append(classifier(x))
+            cur = x
+            for idx, part in enumerate(classifier):
+                cur = part(cur)
+                if idx == 0:
+                    features.append(cur)  # feature vector for this attribute
+            # outputs.append(classifier(o))
+            outputs.append(cur)
 
-        return y
+        if get_feat:
+            features = torch.cat(features, dim=1)
+            return outputs, features
+
+        return outputs
 
 
 def resnet50(pretrained=True, **kwargs):

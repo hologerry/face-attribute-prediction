@@ -22,8 +22,8 @@ import torchvision.transforms as transforms
 from tensorboardX import SummaryWriter
 
 import models
-from image_attribute_pseudo_lmdb import ImageAttributePseudoLMDB
-from utils import AverageMeter, Bar, Logger, accuracy, accuracy_b, mkdir_p, savefig
+from celebahq_extra import CelebAHQExtra
+from utils import AverageMeter, Bar, Logger, accuracy, mkdir_p, savefig
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
@@ -38,10 +38,10 @@ parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
                     help='model architecture: ' +
                     ' | '.join(model_names) +
                     ' (default: resnet18)')
-parser.add_argument('-j', '--workers', default=16, type=int, metavar='N',
+parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 # Optimization options
-parser.add_argument('--epochs', default=100, type=int, metavar='N',
+parser.add_argument('--epochs', default=120, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -66,14 +66,14 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
 # Checkpoints
-parser.add_argument('-c', '--checkpoint', default='checkpoints_celebahq_module_pseudo_01', type=str, metavar='PATH',
+parser.add_argument('-c', '--checkpoint', default='checkpoints_celebahq_select_module', type=str, metavar='PATH',
                     help='path to save checkpoint (default: checkpoints)')
-parser.add_argument('--resume', default='checkpoints_celebahq_module_pseudo_01/model_best.pth.tar', type=str, metavar='PATH',
+parser.add_argument('--resume', default='checkpoints_celebahq_select_module/model_best.pth.tar', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 # Architecture
 parser.add_argument('--cardinality', type=int, default=32, help='ResNeXt model cardinality (group).')
 parser.add_argument('--base-width', type=int, default=4, help='ResNeXt model base width (number of channels in each group).')
-parser.add_argument('--groups', type=int, default=3, help='ShuffleNet mod+el groups')
+parser.add_argument('--groups', type=int, default=3, help='ShuffleNet model groups')
 # Miscs
 parser.add_argument('--manual-seed', type=int, help='manual seed')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
@@ -89,7 +89,7 @@ parser.add_argument('--dist-backend', default='gloo', type=str,
 # Device options
 parser.add_argument('--gpu-id', default='0,1', type=str,
                     help='id(s) for CUDA_VISIBLE_DEVICES')
-
+# Attributes
 parser.add_argument('--selected_attrs', type=list,
                     default=['Arched_Eyebrows', 'Black_Hair', 'Blond_Hair', 'Brown_Hair', 'Eyeglasses',
                              'Gray_Hair', 'Heavy_Makeup', 'Male', 'Mouth_Slightly_Open', 'Mustache',
@@ -108,19 +108,11 @@ parser.add_argument('--all_attrs', type=list,
 
 best_prec1 = 0
 args = None
-cudnn.benchmark = True
 
 
 def main():
     global args, best_prec1
     args = parser.parse_args()
-
-    all2selected_idxes = []
-    for attr in args.all_attrs:
-        if attr in args.selected_attrs:
-            all2selected_idxes.append(args.selected_attrs.index(attr))
-        else:
-            all2selected_idxes.append(-1)
 
     args.distributed = args.world_size > 1
 
@@ -130,7 +122,6 @@ def main():
     # Use CUDA
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_id
     use_cuda = torch.cuda.is_available()
-    print(use_cuda)
 
     # Random seed
     if args.manual_seed is None:
@@ -143,18 +134,18 @@ def main():
     # create model
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](pretrained=True, num_attributes=44)
+        model = models.__dict__[args.arch](pretrained=True, num_attributes=len(args.selected_attrs))
     elif args.arch.startswith('resnext'):
         model = models.__dict__[args.arch](
             baseWidth=args.base_width,
             cardinality=args.cardinality,
-            num_attributes=44,
+            num_attributes=len(args.all_attrs),
         )
     elif args.arch.startswith('shufflenet'):
-        model = models.__dict__[args.arch](groups=args.groups, num_attributes=44)
+        model = models.__dict__[args.arch](groups=args.groups, num_attributes=len(args.selected_attrs))
     else:
         print("=> creating model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](pretrained=True, num_attributes=44)
+        model = models.__dict__[args.arch](pretrained=True, num_attributes=len(args.selected_attrs))
 
     # if not args.distributed:
     #     if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
@@ -167,7 +158,6 @@ def main():
     #     model = torch.nn.parallel.DistributedDataParallel(model)
 
     # define loss function (criterion) and optimizer
-
     # optionally resume from a checkpoint
     title = 'CelebAHQ-' + args.arch
     if not os.path.isdir(args.checkpoint):
@@ -189,7 +179,6 @@ def main():
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
         logger.set_names(['Learning Rate', 'Train Loss', 'Valid Loss', 'Train Acc.', 'Valid Acc.'])
 
-    criterion_batch = nn.CrossEntropyLoss(reduction='none').cuda()
     criterion = nn.CrossEntropyLoss().cuda()
     model = torch.nn.DataParallel(model).cuda()
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
@@ -198,31 +187,35 @@ def main():
 
     if args.resume:
         if os.path.isfile(args.resume):
-            print("=> loading checkpoint '{}'".format(args.resume))
+            print("=> loading optimizer '{}'".format(args.resume))
             checkpoint = torch.load(args.resume, map_location='cuda')
             optimizer.load_state_dict(checkpoint['optimizer'])
-            print("=> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
+            print("=> loaded optimizer '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
             args.checkpoint = os.path.dirname(args.resume)
             logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
         else:
-            print("=> no checkpoint found at '{}'".format(args.resume))
+            print("=> no optimizer checkpoint found at '{}'".format(args.resume))
     else:
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
         logger.set_names(['Learning Rate', 'Train Loss', 'Valid Loss', 'Train Acc.', 'Valid Acc.'])
 
+    cudnn.benchmark = True
+
     # Data loading code
     normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
 
-    train_dataset = ImageAttributePseudoLMDB(
+    train_dataset = CelebAHQExtra(
         args.data,
-        'celebahq_ffhq_fake_all_pseudo_03',
+        'celebahq_extra',
         'train',
         transforms.Compose([
             transforms.Resize((256, 256)),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             normalize,
-        ]))
+        ]),
+        args.selected_attrs,
+        None)
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -234,42 +227,38 @@ def main():
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
     val_loader = torch.utils.data.DataLoader(
-        ImageAttributePseudoLMDB(args.data, 'celebahq_ffhq_fake_all_pseudo_03', 'attr_test', transforms.Compose([
-            transforms.Resize((256, 256)),
-            transforms.ToTensor(),
-            normalize,
-        ])),
+        CelebAHQExtra(args.data, 'celebahq_extra', 'attr_test', transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor(), normalize]),
+                      args.selected_attrs,
+                      None),
         batch_size=args.test_batch, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
     test_loader = torch.utils.data.DataLoader(
-        ImageAttributePseudoLMDB(args.data, 'celebahq_ffhq_fake_all_pseudo_03', 'attr_test', transforms.Compose([
-            transforms.Resize((256, 256)),
-            transforms.ToTensor(),
-            normalize,
-        ])),
+        CelebAHQExtra(args.data, 'celebahq_extra', 'test', transforms.Compose([transforms.Resize((256, 256)), transforms.ToTensor(), normalize]),
+                      args.selected_attrs,
+                      None),
         batch_size=args.test_batch, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
     if args.evaluate:
-        validate(test_loader, model, criterion, all2selected_idxes)
+        validate(test_loader, model, criterion)
         return
 
     # visualization
     writer = SummaryWriter(os.path.join(args.checkpoint, 'logs'))
 
-    for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
+    for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
         lr = adjust_learning_rate(optimizer, epoch)
 
-        print('\nEpoch: [%d | %d] LR: %f' % (epoch + 1, args.start_epoch + args.epochs, lr))
+        print('\nEpoch: [%d | %d] LR: %f' % (epoch + 1, args.epochs, lr))
 
         # train for one epoch
-        train_loss, train_acc = train(train_loader, model, criterion_batch, optimizer, epoch)
+        train_loss, train_acc = train(train_loader, model, criterion, optimizer, epoch)
 
         # evaluate on validation set
-        val_loss, prec1 = validate(val_loader, model, criterion, all2selected_idxes)
+        val_loss, prec1 = validate(val_loader, model, criterion)
 
         # append logger file
         logger.append([lr, train_loss, val_loss, train_acc, prec1])
@@ -300,13 +289,13 @@ def main():
     print(best_prec1)
 
 
-def train(train_loader, model, criterion_batch, optimizer, epoch):
+def train(train_loader, model, criterion, optimizer, epoch,):
     bar = Bar('Processing', max=len(train_loader))
 
     batch_time = AverageMeter()
     data_time = AverageMeter()
-    losses = [AverageMeter() for _ in range(44)]
-    top1 = [AverageMeter() for _ in range(44)]
+    losses = [AverageMeter() for _ in range(len(args.selected_attrs))]
+    top1 = [AverageMeter() for _ in range(len(args.selected_attrs))]
 
     # switch to train mode
     model.train()
@@ -317,10 +306,9 @@ def train(train_loader, model, criterion_batch, optimizer, epoch):
     for i, data in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
-
-        input = data['img_a'].cuda()
-        target = data['attr_a'].cuda().long()
-        pseudo = data['pseudo_a'].cuda()
+        input = data['img_a'].cuda(non_blocking=True)
+        target = data['attr_a'].cuda(non_blocking=True).long()
+        assert target.size(1) == len(args.selected_attrs)
 
         # compute output
         output = model(input)
@@ -328,16 +316,11 @@ def train(train_loader, model, criterion_batch, optimizer, epoch):
         loss = []
         prec1 = []
         for j in range(len(output)):
-            loss_no_weight = criterion_batch(output[j], target[:, j])
-            pseudo_j = pseudo[:, j]
-            loss_weight = pseudo_j * loss_no_weight
-            nonzero = torch.sum(pseudo_j)
-            loss_j = torch.sum(loss_weight) / nonzero
-            loss.append(loss_j)
-            prec1.append(accuracy_b(output[j], target[:, j], pseudo_j, topk=(1,)))
+            loss.append(criterion(output[j], target[:, j]))
+            prec1.append(accuracy(output[j], target[:, j], topk=(1,)))
 
-            losses[j].update(loss[j].item(), nonzero.long().item())
-            top1[j].update(prec1[j][0].item(), nonzero.long().item())
+            losses[j].update(loss[j].item(), input.size(0))
+            top1[j].update(prec1[j][0].item(), input.size(0))
         losses_avg = [losses[k].avg for k in range(len(losses))]
         top1_avg = [top1[k].avg for k in range(len(top1))]
         loss_avg = sum(losses_avg) / len(losses_avg)
@@ -369,7 +352,7 @@ def train(train_loader, model, criterion_batch, optimizer, epoch):
     return (loss_avg, prec1_avg)
 
 
-def validate(val_loader, model, criterion, all2selected_idxes):
+def validate(val_loader, model, criterion):
     bar = Bar('Processing', max=len(val_loader))
 
     batch_time = AverageMeter()
@@ -387,21 +370,22 @@ def validate(val_loader, model, criterion, all2selected_idxes):
         for i, data in enumerate(val_loader):
             # measure data loading time
             data_time.update(time.time() - end)
-            input = data['img_a'].cuda()
-            target = data['attr_a'].cuda().long()
+            input = data['img_a'].cuda(non_blocking=True)
+            target = data['attr_a'].cuda(non_blocking=True).long()
+            assert target.size(1) == len(args.selected_attrs)
 
             # compute output
             output = model(input)
+            # output, features = model(input, get_feat=True)
+            # print(features.size())
             # measure accuracy and record loss
             loss = []
             prec1 = []
             for j in range(len(output)):
-                select_idx = all2selected_idxes[j]
-                if select_idx != -1:
-                    loss.append(criterion(output[j], target[:, j]))
-                    prec1.append(accuracy(output[j], target[:, j], topk=(1,)))
-                    losses[select_idx].update(loss[select_idx].item(), input.size(0))
-                    top1[select_idx].update(prec1[select_idx][0].item(), input.size(0))
+                loss.append(criterion(output[j], target[:, j]))
+                prec1.append(accuracy(output[j], target[:, j], topk=(1,)))
+                losses[j].update(loss[j].item(), input.size(0))
+                top1[j].update(prec1[j][0].item(), input.size(0))
             losses_avg = [losses[k].avg for k in range(len(losses))]
             top1_avg = [top1[k].avg for k in range(len(top1))]
             loss_avg = sum(losses_avg) / len(losses_avg)

@@ -1,1 +1,3 @@
-90.1545
+model_best on celebahq and extra images celeba on all attributes: 90.1545
+model_best on celebahq test 2000 images on selected attributes: 93.9294
+model_best on celebahq and extra images celeba on selected attributes: 92.5206
